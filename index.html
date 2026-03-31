@@ -807,6 +807,37 @@ function goHome() {
 }
 
 function gotoChapter(ch) {
+  // Clean up all game RAF and event listeners
+  cancelAnimationFrame(forceRaf);
+  cancelAnimationFrame(hydraulicRaf);
+  cancelAnimationFrame(fluidRaf);
+  cancelAnimationFrame(earthRaf);
+  cancelAnimationFrame(energyConvRaf);
+  cancelAnimationFrame(circuitRaf);
+  cancelAnimationFrame(conductorRaf);
+  cancelAnimationFrame(energyRaf);
+
+  // Remove all canvas event listeners
+  const canvases = document.querySelectorAll('canvas');
+  canvases.forEach(canvas => {
+    canvas.onclick = null;
+    canvas.onmousedown = null;
+    canvas.onmouseup = null;
+    canvas.ontouchstart = null;
+    canvas.ontouchend = null;
+  });
+
+  // Remove force game event listeners
+  const forceCanvas = document.getElementById('canvas-force');
+  if (forceCanvas) {
+    forceCanvas.removeEventListener('mousedown', handleForceMouseDown);
+    forceCanvas.removeEventListener('mousemove', handleForceMouseMove);
+    forceCanvas.removeEventListener('mouseup', handleForceMouseUp);
+    forceCanvas.removeEventListener('touchstart', handleForceMouseDown);
+    forceCanvas.removeEventListener('touchmove', handleForceMouseMove);
+    forceCanvas.removeEventListener('touchend', handleForceMouseUp);
+  }
+
   document.documentElement.setAttribute('data-chapter', ch);
   currentChapter = ch;
   showScreen(`screen-chapter${ch}-home`);
