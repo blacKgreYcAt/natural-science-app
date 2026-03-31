@@ -1447,6 +1447,29 @@ function startEnergyGame() {
 
   cancelAnimationFrame(energyRaf);
   showScreen('screen-game-energy');
+
+  // Set up canvas click handler
+  const energyCanvas = document.getElementById('canvas-energy');
+  if (energyCanvas) {
+    energyCanvas.onclick = (e) => {
+      const rect = e.target.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+
+      for (const h of ENERGY_HOTSPOTS) {
+        const x1 = parseFloat(h.x) / 100;
+        const y1 = parseFloat(h.y) / 100;
+        const x2 = x1 + parseFloat(h.w) / 100;
+        const y2 = y1 + parseFloat(h.h) / 100;
+
+        if (x >= x1 && x <= x2 && y >= y1 && y <= y2) {
+          clickEnergyHotspot(h.id);
+          break;
+        }
+      }
+    };
+  }
+
   energyGameLoop();
 }
 
