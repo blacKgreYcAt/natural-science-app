@@ -1885,15 +1885,59 @@ function nextEarthTask() {
 }
 
 // ════ CHAPTER 5: ENERGY CONVERSION GAME ════
+// ════ CHAPTER 5: ENERGY CONVERSION GAME ════
+const ENERGY_LEVELS = [
+  {
+    // Level 0: Solar Energy
+    name: '太陽能轉換',
+    sources: [{ x: 60, y: 120, r: 25, emoji: '☀️', id: 'sun', label: '太陽光' }],
+    steps: [
+      { x: 180, y: 80, w: 70, h: 50, label: '集熱\n↓', color: '#ff6600', emoji: '🔥' },
+      { x: 180, y: 160, w: 70, h: 50, label: '發電\n↓', color: '#ffaa00', emoji: '⚡' }
+    ],
+    output: { x: 340, y: 120, r: 30, emoji: '💡', label: '電力' },
+    requiredSteps: 2,
+    hint: '點擊太陽光開始轉換！'
+  },
+  {
+    // Level 1: Wind Energy
+    name: '風能轉換',
+    sources: [{ x: 60, y: 120, r: 25, emoji: '💨', id: 'wind', label: '風力' }],
+    steps: [
+      { x: 180, y: 60, w: 70, h: 50, label: '旋轉\n↓', color: '#0099ff', emoji: '🌪️' },
+      { x: 180, y: 140, w: 70, h: 50, label: '發電\n↓', color: '#00ccff', emoji: '⚡' }
+    ],
+    output: { x: 340, y: 100, r: 30, emoji: '💡', label: '電力' },
+    requiredSteps: 2,
+    hint: '點擊風力開始轉換！'
+  },
+  {
+    // Level 2: Mixed Energy
+    name: '多能源混合',
+    sources: [
+      { x: 50, y: 80, r: 20, emoji: '☀️', id: 'sun', label: '太陽' },
+      { x: 50, y: 160, r: 20, emoji: '💨', id: 'wind', label: '風' }
+    ],
+    steps: [
+      { x: 160, y: 60, w: 60, h: 45, label: '轉換', color: '#ff6600', emoji: '⚡' },
+      { x: 160, y: 130, w: 60, h: 45, label: '轉換', color: '#0099ff', emoji: '⚡' },
+      { x: 240, y: 95, w: 70, h: 50, label: '混合\n儲存', color: '#ffaa00', emoji: '🔋' }
+    ],
+    output: { x: 350, y: 120, r: 30, emoji: '💡', label: '電力' },
+    requiredSteps: 3,
+    hint: '同時啟動太陽能和風能！'
+  }
+];
+
 let energyConvState = {
   currentLevel: 0,
-  activeConversions: new Set(),
+  activeSteps: new Set(),
   done: {}
 };
 
 function loadEnergyConvLevel(level, btn) {
   energyConvState.currentLevel = level;
-  energyConvState.activeConversions = new Set();
+  energyConvState.activeSteps = new Set();
 
   document.querySelectorAll('#screen-game-energy-conv .lvl-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -1905,22 +1949,22 @@ function loadEnergyConvLevel(level, btn) {
 }
 
 function handleEnergyConvClick(e) {
-  const rect = e.target.getBoundingClientRect();
-  const x = (e.clientX - rect.left) * (e.target.width / rect.width);
-  const y = (e.clientY - rect.top) * (e.target.height / rect.height);
+  const canvas = e.target;
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (e.clientY - rect.top) * (canvas.height / rect.height);
 
-  // Simple click detection for energy conversion nodes
-  const sources = [
-    { x: 100, y: 100, r: 30, id: 'sun' },
-    { x: 100, y: 250, r: 30, id: 'wind' }
-  ];
+  const level = ENERGY_LEVELS[energyConvState.currentLevel];
 
-  for (const source of sources) {
+  // Check if clicking on source
+  for (const source of level.sources) {
     if (Math.hypot(x - source.x, y - source.y) < source.r) {
-      if (!energyConvState.activeConversions.has(source.id)) {
-        energyConvState.activeConversions.add(source.id);
-        updateEnergyConvStatus();
+      // Start the conversion process
+      energyConvState.activeSteps = new Set();
+      for (let i = 0; i < level.steps.length; i++) {
+        energyConvState.activeSteps.add(i);
       }
+      updateEnergyConvStatus();
       return;
     }
   }
@@ -1928,16 +1972,15 @@ function handleEnergyConvClick(e) {
 
 function updateEnergyConvStatus() {
   const el = document.getElementById('energy-conv-status');
-  const level = energyConvState.currentLevel;
-  const requiredCount = level === 0 ? 1 : (level === 1 ? 1 : 2);
+  const level = ENERGY_LEVELS[energyConvState.currentLevel];
 
-  if (energyConvState.activeConversions.size >= requiredCount) {
+  if (energyConvState.activeSteps.size >= level.requiredSteps) {
     el.style.color = '#00ff88';
     el.textContent = '✅ 能源轉換完成！電力產生了！';
-    energyConvState.done[level] = true;
+    energyConvState.done[energyConvState.currentLevel] = true;
   } else {
     el.style.color = 'var(--dim)';
-    el.textContent = '👆 點擊能源源頭開始轉換';
+    el.textContent = level.hint;
   }
 }
 
@@ -1952,68 +1995,115 @@ function drawEnergyConvGame() {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
-  const level = energyConvState.currentLevel;
+  const level = ENERGY_LEVELS[energyConvState.currentLevel];
 
   ctx.fillStyle = '#000814';
   ctx.fillRect(0, 0, W, H);
 
-  // Sun/Wind sources on left
-  ctx.fillStyle = '#ffaa00';
-  ctx.beginPath();
-  ctx.arc(100, 100, 30, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 14px Microsoft JhengHei';
+  ctx.font = 'bold 13px Microsoft JhengHei';
   ctx.textAlign = 'center';
-  ctx.fillText('☀️', 100, 105);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
 
-  if (level === 1 || level === 2) {
-    ctx.fillStyle = '#4466ff';
+  // Draw sources
+  for (const source of level.sources) {
+    ctx.fillStyle = source.id === 'sun' ? 'rgba(255, 170, 0, 0.2)' : 'rgba(0, 100, 200, 0.2)';
     ctx.beginPath();
-    ctx.arc(100, 250, 30, 0, Math.PI * 2);
+    ctx.arc(source.x, source.y, source.r, 0, Math.PI * 2);
     ctx.fill();
+
+    if (energyConvState.activeSteps.size > 0) {
+      ctx.strokeStyle = '#00ff88';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
     ctx.fillStyle = '#fff';
-    ctx.fillText('💨', 100, 255);
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(source.emoji, source.x, source.y + 6);
+    ctx.font = '11px Microsoft JhengHei';
+    ctx.fillText(source.label, source.x, source.y + 40);
   }
 
-  // Arrow to conversion
-  ctx.strokeStyle = energyConvState.activeConversions.size > 0 ? '#00ff88' : 'rgba(255,255,255,0.3)';
-  ctx.lineWidth = 3;
+  // Draw conversion steps
+  for (let i = 0; i < level.steps.length; i++) {
+    const step = level.steps[i];
+    const isActive = energyConvState.activeSteps.has(i);
+
+    ctx.fillStyle = isActive ? step.color : 'rgba(100,100,100,0.2)';
+    ctx.fillRect(step.x, step.y, step.w, step.h);
+
+    if (isActive) {
+      ctx.strokeStyle = '#00ff88';
+      ctx.lineWidth = 2;
+    } else {
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 1;
+    }
+    ctx.strokeRect(step.x, step.y, step.w, step.h);
+
+    ctx.fillStyle = '#fff';
+    ctx.font = '11px Microsoft JhengHei';
+    ctx.textAlign = 'center';
+    ctx.fillText(step.label, step.x + step.w / 2, step.y + step.h / 2);
+
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText(step.emoji, step.x + step.w / 2, step.y + step.h / 2 + 15);
+  }
+
+  // Draw arrows
+  ctx.strokeStyle = energyConvState.activeSteps.size > 0 ? '#00ff88' : 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+
+  // Arrow from source to first step
+  const firstStep = level.steps[0];
   ctx.beginPath();
-  ctx.moveTo(150, 100);
-  ctx.lineTo(350, 100);
+  ctx.moveTo(level.sources[0].x + 25, level.sources[0].y);
+  ctx.lineTo(firstStep.x, firstStep.y + firstStep.h / 2);
   ctx.stroke();
 
-  // Conversion in middle
-  ctx.fillStyle = 'rgba(255,255,0,0.3)';
-  ctx.fillRect(320, 70, 60, 60);
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(320, 70, 60, 60);
-  ctx.fillStyle = '#fff';
-  ctx.fillText('⚡', 350, 105);
+  // Arrows between steps
+  for (let i = 0; i < level.steps.length - 1; i++) {
+    const curr = level.steps[i];
+    const next = level.steps[i + 1];
+    ctx.beginPath();
+    ctx.moveTo(curr.x + curr.w / 2, curr.y + curr.h);
+    ctx.lineTo(next.x + next.w / 2, next.y);
+    ctx.stroke();
+  }
 
   // Arrow to output
-  ctx.strokeStyle = energyConvState.activeConversions.size > 0 ? '#00ff88' : 'rgba(255,255,255,0.3)';
-  ctx.lineWidth = 3;
+  const lastStep = level.steps[level.steps.length - 1];
   ctx.beginPath();
-  ctx.moveTo(380, 100);
-  ctx.lineTo(500, 100);
+  ctx.moveTo(lastStep.x + lastStep.w, lastStep.y + lastStep.h / 2);
+  ctx.lineTo(level.output.x - level.output.r, level.output.y);
   ctx.stroke();
 
-  // Electricity output
-  ctx.fillStyle = energyConvState.activeConversions.size > 0 ? '#ffff00' : 'rgba(255,255,0,0.3)';
+  ctx.setLineDash([]);
+
+  // Draw output
+  ctx.fillStyle = energyConvState.activeSteps.size >= level.requiredSteps ? 'rgba(255, 255, 0, 0.3)' : 'rgba(255, 255, 0, 0.1)';
   ctx.beginPath();
-  ctx.arc(530, 100, 25, 0, Math.PI * 2);
+  ctx.arc(level.output.x, level.output.y, level.output.r, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#000';
-  ctx.fillText('💡', 530, 105);
+
+  if (energyConvState.activeSteps.size >= level.requiredSteps) {
+    ctx.strokeStyle = '#ffff00';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 24px sans-serif';
+  ctx.fillText(level.output.emoji, level.output.x, level.output.y + 8);
 }
 
 function nextEnergyConvTask() {
-  if (Object.keys(energyConvState.done).length < 3) {
-    energyConvState.done[energyConvState.currentLevel] = true;
-  }
+  energyConvState.done[energyConvState.currentLevel] = true;
 
   cancelAnimationFrame(energyConvRaf);
   const [ch, task] = currentGame.split('-').map(Number);
