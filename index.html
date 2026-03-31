@@ -806,7 +806,22 @@ function goHome() {
   showScreen('screen-home');
 }
 
+function resetGameStates() {
+  // Reset all game state objects to initial values
+  forceGameState = { currentTask: 0, boxX: 100, boxY: 200, dragX: -1, dragY: -1, isDragging: false, completed: false, forceVector: { x: 0, y: 0 } };
+  hydraulicState = { currentLevel: 0, activePistons: new Set(), done: {}, animationProgress: {} };
+  fluidState = { currentLevel: 0, liquidLevel: { left: 0, right: 0 }, isPouring: false, done: {} };
+  earthState = { currentLevel: 0, selectedRocks: [], done: {}, layersRevealed: false };
+  energyConvState = { currentLevel: 0, activeSteps: new Set(), done: {} };
+  circuitState = { currentLevel: 0, activeSegs: new Set(), burnedBulb: null, done: {} };
+  conductorState = { selectedItem: null, foundConductors: new Set(), done: false };
+  energyState = { fixedHS: new Set(), done: false };
+}
+
 function gotoChapter(ch) {
+  // Reset all game states to prevent state pollution
+  resetGameStates();
+
   // Clean up all game RAF and event listeners
   cancelAnimationFrame(forceRaf);
   cancelAnimationFrame(hydraulicRaf);
@@ -833,9 +848,9 @@ function gotoChapter(ch) {
     forceCanvas.removeEventListener('mousedown', handleForceMouseDown);
     forceCanvas.removeEventListener('mousemove', handleForceMouseMove);
     forceCanvas.removeEventListener('mouseup', handleForceMouseUp);
-    forceCanvas.removeEventListener('touchstart', handleForceMouseDown);
-    forceCanvas.removeEventListener('touchmove', handleForceMouseMove);
-    forceCanvas.removeEventListener('touchend', handleForceMouseUp);
+    forceCanvas.removeEventListener('touchstart', handleForceTouchStart);
+    forceCanvas.removeEventListener('touchmove', handleForceTouchMove);
+    forceCanvas.removeEventListener('touchend', handleForceTouchEnd);
   }
 
   document.documentElement.setAttribute('data-chapter', ch);
@@ -1121,7 +1136,8 @@ function loadCircuitLevel(level, btn) {
   btn.classList.add('active');
 
   const canvas = document.getElementById('canvas-circuit');
-  canvas.onclick = handleCircuitClick;
+  canvas.removeEventListener('click', handleCircuitClick);
+  canvas.addEventListener('click', handleCircuitClick);
 
   circuitGameLoop();
 }
@@ -1291,7 +1307,8 @@ function drawCircuitGame() {
 
 function nextCircuitTask() {
   if (Object.keys(circuitState.done).length < 3) {
-    alert('請完成所有3個關卡！');
+    console.log('⚠️ 請完成所有3個關卡！');
+    return;
     return;
   }
 
@@ -1452,7 +1469,8 @@ function drawConductorGame() {
 
 function nextConductorTask() {
   if (!conductorState.done) {
-    alert('請先找出所有良導體！');
+    console.log('⚠️ 請先找出所有良導體！');
+    return;
     return;
   }
 
@@ -1621,7 +1639,8 @@ function clickEnergyHotspot(hsId) {
 
 function nextEnergyTask() {
   if (!energyState.done) {
-    alert('請先修正所有4個問題！');
+    console.log('⚠️ 請先修正所有4個問題！');
+    return;
     return;
   }
 
@@ -1651,10 +1670,14 @@ function loadFluidLevel(level, btn) {
   btn.classList.add('active');
 
   const canvas = document.getElementById('canvas-fluid');
-  canvas.onmousedown = handleFluidDrag;
-  canvas.onmouseup = handleFluidUp;
-  canvas.ontouchstart = handleFluidDrag;
-  canvas.ontouchend = handleFluidUp;
+  canvas.removeEventListener('mousedown', handleFluidDrag);
+  canvas.removeEventListener('mouseup', handleFluidUp);
+  canvas.removeEventListener('touchstart', handleFluidDrag);
+  canvas.removeEventListener('touchend', handleFluidUp);
+  canvas.addEventListener('mousedown', handleFluidDrag);
+  canvas.addEventListener('mouseup', handleFluidUp);
+  canvas.addEventListener('touchstart', handleFluidDrag);
+  canvas.addEventListener('touchend', handleFluidUp);
 
   fluidGameLoop();
 }
@@ -1790,7 +1813,8 @@ function drawFluidGame() {
 
 function nextFluidTask() {
   if (Object.keys(fluidState.done).length < 3) {
-    alert('請完成所有3個關卡！');
+    console.log('⚠️ 請完成所有3個關卡！');
+    return;
     return;
   }
 
@@ -2017,7 +2041,8 @@ function loadEnergyConvLevel(level, btn) {
   btn.classList.add('active');
 
   const canvas = document.getElementById('canvas-energy-conv');
-  canvas.onclick = handleEnergyConvClick;
+  canvas.removeEventListener('click', handleEnergyConvClick);
+  canvas.addEventListener('click', handleEnergyConvClick);
 
   energyConvGameLoop();
 }
@@ -2241,7 +2266,8 @@ function loadHydraulicLevel(level, btn) {
   btn.classList.add('active');
 
   const canvas = document.getElementById('canvas-hydraulic');
-  canvas.onclick = handleHydraulicClick;
+  canvas.removeEventListener('click', handleHydraulicClick);
+  canvas.addEventListener('click', handleHydraulicClick);
 
   hydraulicGameLoop();
 }
@@ -2393,7 +2419,8 @@ function drawHydraulicGame() {
 
 function nextHydraulicTask() {
   if (Object.keys(hydraulicState.done).length < 3) {
-    alert('請完成所有3個關卡！');
+    console.log('⚠️ 請完成所有3個關卡！');
+    return;
     return;
   }
 
@@ -2512,6 +2539,7 @@ function handleForceMouseUp() {
 }
 
 function handleForceTouchStart(e) {
+  e.preventDefault();
   const touch = e.touches[0];
   const rect = e.target.getBoundingClientRect();
   const x = (touch.clientX - rect.left) * (e.target.width / rect.width);
@@ -2530,6 +2558,7 @@ function handleForceTouchStart(e) {
 }
 
 function handleForceTouchMove(e) {
+  e.preventDefault();
   if (!forceGameState.isDragging) return;
   const touch = e.touches[0];
   const rect = e.target.getBoundingClientRect();
@@ -2540,7 +2569,8 @@ function handleForceTouchMove(e) {
   forceGameState.forceVector.y = (y - forceGameState.dragY) * 0.5;
 }
 
-function handleForceTouchEnd() {
+function handleForceTouchEnd(e) {
+  e.preventDefault();
   handleForceMouseUp();
 }
 
@@ -2633,7 +2663,8 @@ function drawForceGame() {
 
 function nextForceTask() {
   if (!forceGameState.completed) {
-    alert('請先完成遊戲任務！');
+    console.log('⚠️ 請先完成遊戲任務！');
+    return;
     return;
   }
 
@@ -2643,6 +2674,9 @@ function nextForceTask() {
     canvas.removeEventListener('mousedown', handleForceMouseDown);
     canvas.removeEventListener('mousemove', handleForceMouseMove);
     canvas.removeEventListener('mouseup', handleForceMouseUp);
+    canvas.removeEventListener('touchstart', handleForceTouchStart);
+    canvas.removeEventListener('touchmove', handleForceTouchMove);
+    canvas.removeEventListener('touchend', handleForceTouchEnd);
   }
 
   const [ch, task] = currentGame.split('-').map(Number);
