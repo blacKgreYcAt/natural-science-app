@@ -41,7 +41,7 @@
     .back-btn:hover { background: rgba(var(--accent-rgb),.25); }
 
     /* ════ HOME ════ */
-    #screen-home { padding: 2rem 1.5rem 3rem; gap: 2rem; }
+    #screen-home { padding: 2rem 1.5rem 8rem; gap: 2rem; }
     .home-header { text-align: center; padding-top: .5rem; }
     .home-label { font-size: .7rem; letter-spacing: .3em; text-transform: uppercase; color: var(--dim); margin-bottom: .5rem; }
     .home-title {
@@ -1081,11 +1081,12 @@ let energyState = {
 };
 
 function loadCircuitLevel(level, btn) {
+  cancelAnimationFrame(circuitRaf);
   circuitState.currentLevel = level;
   circuitState.activeSegs = new Set();
   circuitState.burnedBulb = null;
 
-  document.querySelectorAll('.lvl-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#screen-game-circuit .lvl-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 
   const canvas = document.getElementById('canvas-circuit');
@@ -1303,6 +1304,7 @@ function startConductorGame() {
     collectionDiv.appendChild(badge);
   });
 
+  cancelAnimationFrame(conductorRaf);
   showScreen('screen-game-conductor');
   conductorGameLoop();
 }
@@ -1443,6 +1445,7 @@ function startEnergyGame() {
     badgesDiv.appendChild(badge);
   });
 
+  cancelAnimationFrame(energyRaf);
   showScreen('screen-game-energy');
   energyGameLoop();
 }
@@ -1585,6 +1588,7 @@ let fluidState = {
 };
 
 function loadFluidLevel(level, btn) {
+  cancelAnimationFrame(fluidRaf);
   fluidState.currentLevel = level;
   fluidState.liquidLevel = { left: 0, right: 0 };
   fluidState.isPouring = false;
@@ -1764,6 +1768,7 @@ const ROCKS_ITEMS = [
 ];
 
 function loadEarthLevel(level, btn) {
+  cancelAnimationFrame(earthRaf);
   earthState.currentLevel = level;
   earthState.selectedRocks = [];
   earthState.layersRevealed = false;
@@ -1950,6 +1955,7 @@ let energyConvState = {
 };
 
 function loadEnergyConvLevel(level, btn) {
+  cancelAnimationFrame(energyConvRaf);
   energyConvState.currentLevel = level;
   energyConvState.activeSteps = new Set();
 
@@ -2172,6 +2178,7 @@ let hydraulicState = {
 };
 
 function loadHydraulicLevel(level, btn) {
+  cancelAnimationFrame(hydraulicRaf);
   hydraulicState.currentLevel = level;
   hydraulicState.activePistons = new Set();
   hydraulicState.animationProgress = {};
