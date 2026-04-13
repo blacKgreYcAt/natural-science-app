@@ -915,7 +915,7 @@ function startGame(chapter, task) {
     showScreen('screen-game-earth');
   } else if (chapter === 5) {
     // Chapter 5: Energy Conversion Game
-    energyConvState = { currentLevel: 0, activeConversions: new Set(), done: {} };
+    energyConvState = { currentLevel: 0, activeSteps: new Set(), done: {} };
     loadEnergyConvLevel(0, document.querySelectorAll('#screen-game-energy-conv .lvl-btn')[0]);
     showScreen('screen-game-energy-conv');
   } else if (chapter === 6) {
