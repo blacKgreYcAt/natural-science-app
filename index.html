@@ -854,9 +854,42 @@ function showScreen(id) {
 }
 
 function goHome() {
+  // 停止所有遊戲循環
+  if (typeof animationFrameId !== 'undefined' && animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+  
+  // 清理所有定時器
+  if (typeof gameIntervals !== 'undefined' && gameIntervals) {
+    Object.keys(gameIntervals).forEach(key => {
+      clearInterval(gameIntervals[key]);
+    });
+    gameIntervals = {};
+  }
+  
+  // 重置遊戲狀態
+  resetGameStates();
+  
+  // 移除遊戲事件監聽
+  const canvas = document.getElementById('game-canvas');
+  if (canvas) {
+    canvas.removeEventListener('mousedown', handleCanvasClick);
+    canvas.removeEventListener('mousemove', handleCanvasDrag);
+    canvas.removeEventListener('mouseup', handleCanvasUp);
+  }
+  
+  // 更新 UI 狀態
   document.documentElement.setAttribute('data-chapter', 'home');
   currentChapter = null;
+  currentQuestion = 0;
+  currentGame = null;
+  
+  // 顯示首頁
   showScreen('screen-home');
+  
+  // 滾動到頂部
+  window.scrollTo(0, 0);
 }
 
 function resetGameStates() {
@@ -912,9 +945,29 @@ function gotoChapter(ch) {
 }
 
 function startGame(chapter, task) {
+  // 验证输入参数
+  const MAX_CHAPTERS = 6;
+  const TASKS_PER_CHAPTER = 3;
+  
+  if (!Number.isInteger(chapter) || chapter < 1 || chapter > MAX_CHAPTERS) {
+    console.error('Invalid chapter:', chapter);
+    return;
+  }
+  if (!Number.isInteger(task) || task < 1 || task > TASKS_PER_CHAPTER) {
+    console.error('Invalid task:', task);
+    return;
+  }
+  
+  // 验证对应的游戏数据存在
+  const gameKey = `${chapter}-${task}`;
+  if (!quizData[gameKey]) {
+    console.error('Quiz data not found for:', gameKey);
+    return;
+  }
+  
   document.documentElement.setAttribute('data-chapter', chapter);
   currentChapter = chapter;
-  currentGame = `${chapter}-${task}`;
+  currentGame = gameKey;
   currentQuestion = 0;
 
   // Show game phase first, then quiz after
@@ -975,18 +1028,58 @@ function renderQuestion() {
   document.getElementById('prog-fill').style.width = ((currentQuestion + 1) / total * 100) + '%';
 
   const el = document.getElementById('quiz-box');
-  el.innerHTML = `
-    <div class="quiz-q">${q.q}</div>
-    <div class="quiz-choices">
-      ${q.choices.map((c, i) => `
-        <button class="quiz-choice" onclick="selectAnswer(${i}, ${q.correct})">${c}</button>
-      `).join('')}
-    </div>
-  `;
+  el.innerHTML = '';
+  
+  const qDiv = document.createElement('div');
+  qDiv.className = 'quiz-q';
+  qDiv.textContent = q.q;
+  el.appendChild(qDiv);
+  
+  const choicesDiv = document.createElement('div');
+  choicesDiv.className = 'quiz-choices';
+  
+  q.choices.forEach((choice, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-choice';
+    btn.textContent = choice;
+    btn.dataset.choiceIndex = i;
+    btn.dataset.correctIndex = q.correct;
+    btn.onclick = (e) => {
+      const selectedIdx = parseInt(btn.dataset.choiceIndex);
+      const correctIdx = parseInt(btn.dataset.correctIndex);
+      selectAnswer(selectedIdx, correctIdx);
+    };
+    choicesDiv.appendChild(btn);
+  });
+  
+  el.appendChild(choicesDiv);
 }
 
 function selectAnswer(selected, correct) {
+  // 验证参数
+  if (!Number.isInteger(selected) || selected < 0) {
+    console.error('Invalid selected index:', selected);
+    return;
+  }
+  if (!Number.isInteger(correct) || correct < 0) {
+    console.error('Invalid correct index:', correct);
+    return;
+  }
+  
+  // 验证游戏数据存在
+  if (!quizData[currentGame]) {
+    console.error('Quiz data not found for:', currentGame);
+    return;
+  }
+  
   const quiz = quizData[currentGame];
+  
+  // 验证当前题目索引有效
+  if (currentQuestion < 0 || currentQuestion >= quiz.length) {
+    console.error('Invalid question index:', currentQuestion);
+    return;
+  }
+  
   const q = quiz[currentQuestion];
   const buttons = document.querySelectorAll('.quiz-choice');
 
@@ -2765,6 +2858,44 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     };
+  }
+});
+
+
+// P2-4: 事件委托 - 改进 onclick 处理
+document.addEventListener('DOMContentLoaded', () => {
+  // 篇章卡片事件委托
+  document.querySelectorAll('.chapter-card').forEach(card => {
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', (e) => {
+      const chapter = parseInt(card.dataset.chapter);
+      if (!isNaN(chapter)) {
+        gotoChapter(chapter);
+      }
+    });
+  });
+  
+  // 任务卡片事件委托
+  document.querySelectorAll('.mission-card').forEach(card => {
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', (e) => {
+      const taskInfo = card.getAttribute('onclick');
+      if (taskInfo && taskInfo.includes('startGame')) {
+        const match = taskInfo.match(/startGame\((\d+),(\d+)\)/);
+        if (match) {
+          const chapter = parseInt(match[1]);
+          const task = parseInt(match[2]);
+          startGame(chapter, task);
+        }
+      }
+    });
+  });
+  
+  // 返回按钮
+  const backBtn = document.querySelector('.back-btn');
+  if (backBtn) {
+    backBtn.removeAttribute('onclick');
+    backBtn.addEventListener('click', goHome);
   }
 });
 </script>
